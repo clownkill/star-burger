@@ -3,8 +3,7 @@ from django.http import JsonResponse
 from django.templatetags.static import static
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from rest_framework import status
-
+from rest_framework.serializers import ModelSerializer
 
 from .models import Product
 from .models import Order
@@ -63,43 +62,32 @@ def product_list_api(request):
     })
 
 
+class OrderItemSerializer(ModelSerializer):
+
+    class Meta:
+        model = OrderItem
+        fields = ['product', 'quantity']
+
+
+class OrderSerializer(ModelSerializer):
+    products = OrderItemSerializer(many=True, allow_empty=False)
+
+    class Meta:
+        model = Order
+        fields = ['firstname', 'lastname', 'phonenumber', 'address', 'products']
+
+
 @api_view(['POST'])
 def register_order(request):
     order = request.data
-    order_fields = ['products', 'firstname', 'lastname', 'phonenumber', 'address']
-    try:
-        for field in order_fields:
-            order[field]
-    except KeyError:
-        content = {'products, firstname, lastname, phonenumber, address': 'Обязательное поле'}
-        return Response(content, status=status.HTTP_406_NOT_ACCEPTABLE)
-    if isinstance(order['products'], str):
-        content = {'products': 'Поле должно содержать list со значениями. Был получен str'}
-        return Response(content, status=status.HTTP_406_NOT_ACCEPTABLE)
-    if not isinstance(order['firstname'], str):
-        content = {'firstname': f'Поле должно содержать str. Был получен {type(order["firstname"])}'}
-        return Response(content, status=status.HTTP_406_NOT_ACCEPTABLE)
-    for field in order_fields:
-        if not order[field]:
-            content = {field: 'Поле не может быть пустым'}
-            return Response(content, status=status.HTTP_406_NOT_ACCEPTABLE)
-    phonenumber = phonenumbers.parse(order['phonenumber'])
-    for product in order['products']:
-        try:
-            Product.objects.get(id=product['product'])
-        except Product.DoesNotExist:
-            content = {'product': 'Недопустимый первычный ключ'}
-            return Response(content, status=status.HTTP_406_NOT_ACCEPTABLE)
-    if not phonenumbers.is_valid_number(phonenumber):
-        content = {'phonenumber': 'Введен некорректный номер телефона'}
-        return Response(content, status=status.HTTP_406_NOT_ACCEPTABLE)
 
-
+    serializer = OrderSerializer(data=order)
+    serializer.is_valid(raise_exception=True)
 
     customer = Order.objects.create(
-        first_name=order['firstname'],
-        last_name=order['lastname'],
-        phone_number=order['phonenumber'],
+        firstname=order['firstname'],
+        lastname=order['lastname'],
+        phonenumber=order['phonenumber'],
         address=order['address']
     )
 
