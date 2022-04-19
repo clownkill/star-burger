@@ -79,18 +79,22 @@ def register_order(request):
     if not isinstance(order['firstname'], str):
         content = {'firstname': f'Поле должно содержать str. Был получен {type(order["firstname"])}'}
         return Response(content, status=status.HTTP_406_NOT_ACCEPTABLE)
+    for field in order_fields:
+        if not order[field]:
+            content = {field: 'Поле не может быть пустым'}
+            return Response(content, status=status.HTTP_406_NOT_ACCEPTABLE)
     phonenumber = phonenumbers.parse(order['phonenumber'])
+    for product in order['products']:
+        try:
+            Product.objects.get(id=product['product'])
+        except Product.DoesNotExist:
+            content = {'product': 'Недопустимый первычный ключ'}
+            return Response(content, status=status.HTTP_406_NOT_ACCEPTABLE)
     if not phonenumbers.is_valid_number(phonenumber):
         content = {'phonenumber': 'Введен некорректный номер телефона'}
         return Response(content, status=status.HTTP_406_NOT_ACCEPTABLE)
-    try:
-        content = {}
-        for field in order_fields:
-            if not order[field]:
-                content.update({field: 'Поле не может быть пустым'})
-        return Response(content, status=status.HTTP_406_NOT_ACCEPTABLE)
-    except:
-        pass
+
+
 
     customer = Order.objects.create(
         first_name=order['firstname'],
