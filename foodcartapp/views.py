@@ -71,7 +71,7 @@ class OrderItemSerializer(ModelSerializer):
 class OrderSerializer(ModelSerializer):
     products = OrderItemSerializer(
         many=True,
-        allow_empty=False,
+        allow_null=False,
         write_only=True
     )
 
@@ -95,11 +95,12 @@ def register_order(request):
     )
 
     for product in order['products']:
+        ordered_product = Product.objects.get(pk=product['product'])
         OrderItem.objects.create(
             order_customer=customer,
-            product=product['product'],
+            product=ordered_product,
             quantity=product['quantity'],
-            price=product['product'].price
+            price=ordered_product.price
         )
 
     return Response(serializer.data)
