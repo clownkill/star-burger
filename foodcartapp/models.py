@@ -125,6 +125,9 @@ class RestaurantMenuItem(models.Model):
 
 
 class Order(models.Model):
+    id = models.BigAutoField(
+        primary_key=True
+    )
     firstname = models.CharField(
         'Имя',
         max_length=50,

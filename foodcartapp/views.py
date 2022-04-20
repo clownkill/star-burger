@@ -1,4 +1,3 @@
-import phonenumbers
 from django.http import JsonResponse
 from django.templatetags.static import static
 from rest_framework.decorators import api_view
@@ -70,11 +69,15 @@ class OrderItemSerializer(ModelSerializer):
 
 
 class OrderSerializer(ModelSerializer):
-    products = OrderItemSerializer(many=True, allow_empty=False)
+    products = OrderItemSerializer(
+        many=True,
+        allow_empty=False,
+        write_only=True
+    )
 
     class Meta:
         model = Order
-        fields = ['firstname', 'lastname', 'phonenumber', 'address', 'products']
+        fields = ['id', 'firstname', 'lastname', 'phonenumber', 'address', 'products']
 
 
 @api_view(['POST'])
@@ -98,4 +101,4 @@ def register_order(request):
             quantity=product['quantity']
         )
 
-    return Response(order)
+    return Response(serializer.data)
