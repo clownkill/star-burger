@@ -1,7 +1,10 @@
+from django.conf import settings
 from django.contrib import admin
-from django.shortcuts import reverse
+from django.forms import ModelForm
+from django.shortcuts import reverse, redirect
 from django.templatetags.static import static
 from django.utils.html import format_html
+from django.utils.http import url_has_allowed_host_and_scheme
 
 from .models import Product
 from .models import ProductCategory
@@ -16,8 +19,20 @@ class OrderItemInline(admin.TabularInline):
     extra = 0
 
 
+class OrderModelAdmin(admin.ModelAdmin):
+    form = ModelForm
+
+    def response_change(self, request, obj):
+        if 'next' in request.GET:
+            redirect_url = request.GET['next']
+            if url_has_allowed_host_and_scheme(redirect_url, settings.ALLOWED_HOSTS):
+                return redirect(redirect_url)
+
+            return super(OrderModelAdmin. self).response_change(request, obj)
+
+
 @admin.register(Order)
-class OrderAdmin(admin.ModelAdmin):
+class OrderAdmin(OrderModelAdmin):
     search_fields = [
         'lastname',
         'address',
