@@ -140,8 +140,12 @@ class Order(models.Model):
     objects = OrderQuerySet.as_manager()
 
     STATUS = [
-        ('p', 'Обработанный заказ'),
-        ('u', 'Не обработанный заказ')
+        ('p', 'Обработанный'),
+        ('u', 'Необработанный')
+    ]
+    PAYMENTS = [
+        ('c', 'Наличными'),
+        ('o', 'Электронно')
     ]
 
     id = models.BigAutoField(
@@ -152,6 +156,13 @@ class Order(models.Model):
         max_length=1,
         choices=STATUS,
         default='u',
+        db_index=True
+    )
+    payment_method = models.CharField(
+        'Способ оплаты',
+        max_length=1,
+        choices=PAYMENTS,
+        default='c',
         db_index=True
     )
     firstname = models.CharField(
