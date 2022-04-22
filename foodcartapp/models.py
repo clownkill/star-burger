@@ -171,6 +171,11 @@ class Order(models.Model):
         max_length=100,
         null=False
     )
+    comment = models.TextField(
+        'Комментарий',
+        max_length=200,
+        blank=True
+    )
 
     class Meta:
         verbose_name = 'Заказ'
