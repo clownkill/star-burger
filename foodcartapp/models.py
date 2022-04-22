@@ -138,8 +138,20 @@ class RestaurantMenuItem(models.Model):
 class Order(models.Model):
     objects = OrderQuerySet.as_manager()
 
+    STATUS = [
+        ('p', 'Обработанный заказ'),
+        ('u', 'Не обработанный заказ')
+    ]
+
     id = models.BigAutoField(
         primary_key=True
+    )
+    status = models.CharField(
+        'Статус заказа',
+        max_length=1,
+        choices=STATUS,
+        default='u',
+        db_index=True
     )
     firstname = models.CharField(
         'Имя',
