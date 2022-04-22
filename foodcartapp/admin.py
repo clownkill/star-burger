@@ -33,6 +33,9 @@ class OrderModelAdmin(admin.ModelAdmin):
 
 @admin.register(Order)
 class OrderAdmin(OrderModelAdmin):
+    readonly_fields = [
+        'registered_at',
+    ]
     search_fields = [
         'lastname',
         'address',
