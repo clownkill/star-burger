@@ -8,7 +8,7 @@ from django.contrib.auth import authenticate, login
 from django.contrib.auth import views as auth_views
 
 
-from foodcartapp.models import Product, Restaurant, Order
+from foodcartapp.models import Product, Restaurant, Order, RestaurantMenuItem
 
 
 class Login(forms.Form):
@@ -95,8 +95,40 @@ def view_restaurants(request):
     })
 
 
+def get_order_details(order):
+    restaurants = RestaurantMenuItem.objects.select_related('restaurant')
+    order_items = order.order_items.all()
+    restaurant_with_item = set()
+    restaurants_for_order = []
+    for item in order_items:
+        for place in restaurants.filter(product=item.product.id):
+            if place.availability:
+                restaurant_with_item.add(place.restaurant.name)
+        restaurants_for_order.append(restaurant_with_item.copy())
+        restaurant_with_item.clear()
+    while len(restaurants_for_order) != 1:
+        intersection = restaurants_for_order[-1] & restaurants_for_order[-2]
+        restaurants_for_order.pop()
+        restaurants_for_order.pop()
+        restaurants_for_order.append(intersection)
+
+    return {
+        'id': order.id,
+        'status': order.get_status_display(),
+        'order_price': order.order_price,
+        'firstname': order.firstname,
+        'lastname': order.lastname,
+        'address': order.address,
+        'phonenumber': order.phonenumber,
+        'comment': order.comment,
+        'payment': order.get_payment_method_display(),
+        'restaurant': restaurants_for_order[0]
+    }
+
+
 @user_passes_test(is_manager, login_url='restaurateur:login')
 def view_orders(request):
+    orders = Order.objects.filter(status='u').get_order_price()
     return render(request, template_name='order_items.html', context={
-        'order_items': Order.objects.all().filter(status='u').get_order_price(),
+        'order_items': [get_order_details(order) for order in orders]
     })

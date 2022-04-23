@@ -125,6 +125,7 @@ class RestaurantMenuItem(models.Model):
         db_index=True
     )
 
+
     class Meta:
         verbose_name = 'пункт меню ресторана'
         verbose_name_plural = 'пункты меню ресторана'
@@ -204,6 +205,12 @@ class Order(models.Model):
         blank=True,
         null=True,
         db_index=True
+    )
+    restaurant = models.ManyToManyField(
+        'Restaurant',
+        verbose_name='Ресторан',
+        related_name='orders',
+        null=True
     )
 
     class Meta:
