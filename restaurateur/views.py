@@ -14,6 +14,8 @@ from foodcartapp.models import OrderRestaurant
 from foodcartapp.models import Product
 from foodcartapp.models import Restaurant
 
+from placeapp.models import Place
+
 
 def fetch_coordinates(apikey, address):
     base_url = 'https://geocode-maps.yandex.ru/1.x'
@@ -33,6 +35,13 @@ def fetch_coordinates(apikey, address):
 
     most_relevant = found_places[0]
     lon, lat = most_relevant['GeoObject']['Point']['pos'].split(' ')
+
+    Place.objects.create(
+        name=address,
+        lon=lon,
+        lat=lat
+    )
+
     return lon, lat
 
 
@@ -123,14 +132,26 @@ def view_restaurants(request):
 def get_order_details(order, restaurants):
     yandex_token = settings.YANDEX_TOKEN
 
-    order_lon, order_lat = fetch_coordinates(yandex_token, order.address)
+    try:
+        order_coord = Place.objects.get(name=order.address)
+        order_lon = order_coord.lon
+        order_lat = order_coord.lat
+    except Place.DoesNotExist:
+        order_lon, order_lat = fetch_coordinates(yandex_token, order.address)
 
     restaurants_coordinates = []
     for rest in restaurants:
-        rest_lon, rest_lat = fetch_coordinates(
-            yandex_token,
-            rest.restaurant.address
-        )
+        
+        try:
+            rest_coord = Place.objects.get(name=rest.restaurant.address)
+            rest_lon = rest_coord.lon
+            rest_lat = rest_coord.lat
+        except Place.DoesNotExist:
+            rest_lon, rest_lat = fetch_coordinates(
+                yandex_token,
+                rest.restaurant.address
+            )
+
         restaurants_coordinates.append(
             {
                 'name': rest.restaurant.name,

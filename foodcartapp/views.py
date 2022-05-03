@@ -84,6 +84,7 @@ class OrderSerializer(ModelSerializer):
 
 def find_restaurants(order):
     rests_for_products = []
+
     for order_item in OrderItem.objects.filter(order_customer=order):
         rest_for_product = [
             item.restaurant
@@ -92,13 +93,12 @@ def find_restaurants(order):
         ]
         rests_for_products.append(rest_for_product)
 
-    while len(rests_for_products) != 1:
-        intersection = set(rests_for_products[-1]) & set(rests_for_products[-2])
-        rests_for_products.pop(-1)
-        rests_for_products.pop(-1)
-        rests_for_products.append(intersection)
+    appropriate_rests = set(rests_for_products[0])
 
-    return list(rests_for_products[0])
+    for rests in rests_for_products:
+        appropriate_rests = appropriate_rests & set(rests)
+
+    return appropriate_rests
 
 
 @transaction.atomic
@@ -123,6 +123,7 @@ def register_order(request):
             quantity=product['quantity'],
             price=product['product'].price
         )
+
     for restaurant in find_restaurants(customer):
         OrderRestaurant.objects.create(
             order=customer,
