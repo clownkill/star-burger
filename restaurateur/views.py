@@ -1,14 +1,39 @@
+import requests
+from geopy import distance
 from django import forms
 from django.shortcuts import redirect, render
 from django.views import View
 from django.urls import reverse_lazy
 from django.contrib.auth.decorators import user_passes_test
-
+from django.conf import settings
 from django.contrib.auth import authenticate, login
 from django.contrib.auth import views as auth_views
 
+from foodcartapp.models import Order
+from foodcartapp.models import OrderRestaurant
+from foodcartapp.models import Product
+from foodcartapp.models import Restaurant
 
-from foodcartapp.models import Product, Restaurant, Order, RestaurantMenuItem
+
+def fetch_coordinates(apikey, address):
+    base_url = 'https://geocode-maps.yandex.ru/1.x'
+    response = requests.get(
+        base_url,
+        params={
+            'geocode': address,
+            'apikey': apikey,
+            'format': 'json',
+        }
+    )
+    response.raise_for_status()
+    found_places = response.json()['response']['GeoObjectCollection']['featureMember']
+
+    if not found_places:
+        return None
+
+    most_relevant = found_places[0]
+    lon, lat = most_relevant['GeoObject']['Point']['pos'].split(' ')
+    return lon, lat
 
 
 class Login(forms.Form):
@@ -95,22 +120,29 @@ def view_restaurants(request):
     })
 
 
-def get_order_details(order):
-    restaurants = RestaurantMenuItem.objects.select_related('restaurant')
-    order_items = order.order_items.all()
-    restaurant_with_item = set()
-    restaurants_for_order = []
-    for item in order_items:
-        for place in restaurants.filter(product=item.product.id):
-            if place.availability:
-                restaurant_with_item.add(place.restaurant.name)
-        restaurants_for_order.append(restaurant_with_item.copy())
-        restaurant_with_item.clear()
-    while len(restaurants_for_order) != 1:
-        intersection = restaurants_for_order[-1] & restaurants_for_order[-2]
-        restaurants_for_order.pop()
-        restaurants_for_order.pop()
-        restaurants_for_order.append(intersection)
+def get_order_details(order, restaurants):
+    yandex_token = settings.YANDEX_TOKEN
+
+    order_lon, order_lat = fetch_coordinates(yandex_token, order.address)
+
+    restaurants_coordinates = []
+    for rest in restaurants:
+        rest_lon, rest_lat = fetch_coordinates(
+            yandex_token,
+            rest.restaurant.address
+        )
+        restaurants_coordinates.append(
+            {
+                'name': rest.restaurant.name,
+                'distance': round(
+                    distance.distance(
+                        (order_lon, order_lat),
+                        (rest_lon, rest_lat)
+                    ).km, 2
+                )
+            }
+        )
+    restaurants_coordinates = sorted(restaurants_coordinates, key=lambda k: k['distance'])
 
     return {
         'id': order.id,
@@ -122,13 +154,20 @@ def get_order_details(order):
         'phonenumber': order.phonenumber,
         'comment': order.comment,
         'payment': order.get_payment_method_display(),
-        'restaurant': restaurants_for_order[0]
+        'restaurant': restaurants_coordinates
     }
 
 
 @user_passes_test(is_manager, login_url='restaurateur:login')
 def view_orders(request):
     orders = Order.objects.filter(status='u').get_order_price()
-    return render(request, template_name='order_items.html', context={
-        'order_items': [get_order_details(order) for order in orders]
-    })
+    restaurants = OrderRestaurant.objects.all().prefetch_related('restaurant')
+    return render(
+        request,
+        template_name='order_items.html',
+        context={
+        'order_items': [
+            get_order_details(order, restaurants.filter(order=order)) for order in orders
+        ]
+        }
+    )

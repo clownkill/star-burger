@@ -1,7 +1,6 @@
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db.models import DecimalField, F, Sum
-from django.utils import timezone
 from phonenumber_field.modelfields import PhoneNumberField
 
 
@@ -206,12 +205,6 @@ class Order(models.Model):
         null=True,
         db_index=True
     )
-    restaurant = models.ManyToManyField(
-        'Restaurant',
-        verbose_name='Ресторан',
-        related_name='orders',
-        null=True
-    )
 
     class Meta:
         verbose_name = 'Заказ'
@@ -219,6 +212,28 @@ class Order(models.Model):
 
     def __str__(self):
         return f'{self.firstname} {self.lastname}'
+
+
+class OrderRestaurant(models.Model):
+    order = models.ForeignKey(
+        Order,
+        related_name='restaurants',
+        verbose_name='Заказ',
+        on_delete=models.CASCADE
+    )
+    restaurant = models.ForeignKey(
+        Restaurant,
+        related_name='orders',
+        verbose_name='Ресторан',
+        on_delete=models.CASCADE
+    )
+
+    class Meta:
+        verbose_name = 'Ресторан доставки'
+        verbose_name_plural = 'Рестораны доставки'
+
+    def __str__(self):
+        return self.restaurant.name
 
 
 class OrderItem(models.Model):
