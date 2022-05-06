@@ -91,7 +91,6 @@ class Product(models.Model):
     )
     description = models.TextField(
         'описание',
-        max_length=200,
         blank=True,
     )
 
@@ -180,7 +179,6 @@ class Order(models.Model):
     )
     comment = models.TextField(
         'Комментарий',
-        max_length=200,
         blank=True
     )
     registered_at = models.DateTimeField(
