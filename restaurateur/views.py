@@ -141,7 +141,7 @@ def get_order_details(order, restaurants):
 
     restaurants_coordinates = []
     for rest in restaurants:
-        
+
         try:
             rest_coord = Place.objects.get(name=rest.restaurant.address)
             rest_lon = rest_coord.lon

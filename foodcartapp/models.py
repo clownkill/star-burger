@@ -137,8 +137,6 @@ class RestaurantMenuItem(models.Model):
 
 
 class Order(models.Model):
-    objects = OrderQuerySet.as_manager()
-
     STATUS = [
         ('p', 'Обработанный'),
         ('u', 'Необработанный')
@@ -205,6 +203,8 @@ class Order(models.Model):
         null=True,
         db_index=True
     )
+
+    objects = OrderQuerySet.as_manager()
 
     class Meta:
         verbose_name = 'Заказ'
