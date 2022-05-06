@@ -170,7 +170,8 @@ class Order(models.Model):
         null=False
     )
     phonenumber = PhoneNumberField(
-        'Телефонный номер'
+        'Телефонный номер',
+        db_index=True
     )
     address = models.CharField(
         'Адрес доставки',
