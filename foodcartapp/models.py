@@ -146,9 +146,6 @@ class Order(models.Model):
         ('o', 'Электронно')
     ]
 
-    id = models.BigAutoField(
-        primary_key=True
-    )
     status = models.CharField(
         'Статус заказа',
         max_length=1,
