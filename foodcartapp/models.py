@@ -8,7 +8,7 @@ class OrderQuerySet(models.QuerySet):
     def get_order_price(self):
         return self.annotate(
             order_price=Sum(
-                F('order_items__price') * F('order_items__quantity'),
+                F('customers__price') * F('customers__quantity'),
                 output_field=DecimalField(max_digits=8, decimal_places=2)
             )
         )
@@ -114,7 +114,7 @@ class RestaurantMenuItem(models.Model):
     product = models.ForeignKey(
         Product,
         on_delete=models.CASCADE,
-        related_name='menu_items',
+        related_name='item_products',
         verbose_name='продукт',
     )
     availability = models.BooleanField(
@@ -122,7 +122,6 @@ class RestaurantMenuItem(models.Model):
         default=True,
         db_index=True
     )
-
 
     class Meta:
         verbose_name = 'пункт меню ресторана'
@@ -232,7 +231,7 @@ class OrderRestaurant(models.Model):
 
 
 class OrderItem(models.Model):
-    order_customer = models.ForeignKey(
+    order = models.ForeignKey(
         Order,
         verbose_name='Покупатель',
         related_name='customers',

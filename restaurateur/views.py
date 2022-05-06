@@ -13,8 +13,28 @@ from foodcartapp.models import Order
 from foodcartapp.models import OrderRestaurant
 from foodcartapp.models import Product
 from foodcartapp.models import Restaurant
+from foodcartapp.models import RestaurantMenuItem
 
 from placeapp.models import Place
+
+
+def find_restaurants(order):
+    rests_for_products = []
+
+    for order_item in order.items.all():
+        rest_for_product = [
+            item.restaurant
+            for item in RestaurantMenuItem.objects.filter(product=order_item.product)
+            if item.availability
+        ]
+        rests_for_products.append(rest_for_product)
+
+    appropriate_rests = set(rests_for_products[0])
+
+    for rests in rests_for_products:
+        appropriate_rests = appropriate_rests & set(rests)
+
+    return appropriate_rests
 
 
 def fetch_coordinates(apikey, address):
@@ -100,7 +120,7 @@ def is_manager(user):
 @user_passes_test(is_manager, login_url='restaurateur:login')
 def view_products(request):
     restaurants = list(Restaurant.objects.order_by('name'))
-    products = list(Product.objects.prefetch_related('menu_items'))
+    products = list(Product.objects.prefetch_related('item_products'))
 
     default_availability = {restaurant.id: False for restaurant in restaurants}
     products_with_restaurants = []
@@ -108,7 +128,7 @@ def view_products(request):
 
         availability = {
             **default_availability,
-            **{item.restaurant_id: item.availability for item in product.menu_items.all()},
+            **{item.restaurant_id: item.availability for item in product.item_products.all()},
         }
         orderer_availability = [availability[restaurant.id] for restaurant in restaurants]
 

@@ -79,37 +79,18 @@ class OrderSerializer(ModelSerializer):
 
     class Meta:
         model = Order
-        fields = ['id', 'firstname', 'lastname', 'phonenumber', 'address', 'products']
-
-
-def find_restaurants(order):
-    rests_for_products = []
-
-    for order_item in OrderItem.objects.filter(order_customer=order):
-        rest_for_product = [
-            item.restaurant
-            for item in RestaurantMenuItem.objects.filter(product=order_item.product)
-            if item.availability
-        ]
-        rests_for_products.append(rest_for_product)
-
-    appropriate_rests = set(rests_for_products[0])
-
-    for rests in rests_for_products:
-        appropriate_rests = appropriate_rests & set(rests)
-
-    return appropriate_rests
+        fields = ['firstname', 'lastname', 'phonenumber', 'address', 'products']
 
 
 @transaction.atomic
 @api_view(['POST'])
 def register_order(request):
-    order = request.data
-
-    serializer = OrderSerializer(data=order)
+    data_for_order = request.data
+    print(data_for_order)
+    serializer = OrderSerializer(data=data_for_order)
     serializer.is_valid(raise_exception=True)
 
-    customer = Order.objects.create(
+    order = Order.objects.create(
         firstname=serializer.validated_data['firstname'],
         lastname=serializer.validated_data['lastname'],
         phonenumber=serializer.validated_data['phonenumber'],
@@ -118,16 +99,10 @@ def register_order(request):
 
     for product in serializer.validated_data['products']:
         OrderItem.objects.create(
-            order_customer=customer,
+            order=order,
             product=product['product'],
             quantity=product['quantity'],
             price=product['product'].price
-        )
-
-    for restaurant in find_restaurants(customer):
-        OrderRestaurant.objects.create(
-            order=customer,
-            restaurant=restaurant
         )
 
     return Response(serializer.data)
