@@ -12,6 +12,7 @@ from .models import Restaurant
 from .models import RestaurantMenuItem
 from .models import Order
 from .models import OrderItem
+from placeapp.models import Place
 
 
 class OrderItemInline(admin.TabularInline):
@@ -43,6 +44,11 @@ class OrderAdmin(OrderModelAdmin):
     inlines = [
         OrderItemInline,
     ]
+
+
+@admin.register(Place)
+class PlaceAdmin(OrderModelAdmin):
+    pass
 
 
 class RestaurantMenuItemInline(admin.TabularInline):

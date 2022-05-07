@@ -1,7 +1,10 @@
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db.models import DecimalField, F, Sum
+from django.db.models.expressions import OuterRef, Subquery
 from phonenumber_field.modelfields import PhoneNumberField
+
+from placeapp.models import Place
 
 
 class OrderQuerySet(models.QuerySet):
@@ -11,6 +14,22 @@ class OrderQuerySet(models.QuerySet):
                 F('customers__price') * F('customers__quantity'),
                 output_field=DecimalField(max_digits=8, decimal_places=2)
             )
+        )
+
+    def fetch_coordinates(self):
+        places = Place.objects.all()
+        return self.annotate(
+            lng=Subquery(places.filter(address=OuterRef('restaurant__address')).values('lng')),
+            lat=Subquery(places.filter(address=OuterRef('restaurant__address')).values('lat'))
+        )
+
+
+class RestaurantMenuItemsQuerySet(models.QuerySet):
+    def fetch_coordinates(self):
+        places = Place.objects.all()
+        return self.annotate(
+            lng=Subquery(places.filter(address=OuterRef('restaurant__address')).values('lng')),
+            lat=Subquery(places.filter(address=OuterRef('restaurant__address')).values('lat')),
         )
 
 
@@ -123,6 +142,8 @@ class RestaurantMenuItem(models.Model):
         db_index=True
     )
 
+    objects = RestaurantMenuItemsQuerySet.as_manager()
+
     class Meta:
         verbose_name = 'пункт меню ресторана'
         verbose_name_plural = 'пункты меню ресторана'
@@ -197,6 +218,14 @@ class Order(models.Model):
         null=True,
         db_index=True
     )
+    restaurant = models.ForeignKey(
+        Restaurant,
+        related_name='orders',
+        verbose_name='Ресторан',
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True
+    )
 
     objects = OrderQuerySet.as_manager()
 
@@ -206,28 +235,6 @@ class Order(models.Model):
 
     def __str__(self):
         return f'{self.firstname} {self.lastname}'
-
-
-class OrderRestaurant(models.Model):
-    order = models.ForeignKey(
-        Order,
-        related_name='restaurants',
-        verbose_name='Заказ',
-        on_delete=models.CASCADE
-    )
-    restaurant = models.ForeignKey(
-        Restaurant,
-        related_name='orders',
-        verbose_name='Ресторан',
-        on_delete=models.CASCADE
-    )
-
-    class Meta:
-        verbose_name = 'Ресторан доставки'
-        verbose_name_plural = 'Рестораны доставки'
-
-    def __str__(self):
-        return self.restaurant.name
 
 
 class OrderItem(models.Model):

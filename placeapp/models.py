@@ -2,16 +2,20 @@ from django.db import models
 
 
 class Place(models.Model):
-    name = models.CharField(
+    address = models.CharField(
         max_length=100,
-        verbose_name='Название места',
+        verbose_name='Адрес места',
         unique=True
     )
-    lon = models.FloatField(
-        'Долгота'
+    lng = models.FloatField(
+        'Долгота',
+        blank=True,
+        null=True
     )
     lat = models.FloatField(
-        'Широта'
+        'Широта',
+        blank=True,
+        null=True
     )
     created_at = models.DateTimeField(
         'Дата добавления',
@@ -24,4 +28,4 @@ class Place(models.Model):
         verbose_name_plural = 'Места'
 
     def __str__(self):
-        return f'{self.name} ({self.lon}, {self.lat})'
+        return f'{self.address} ({self.lng}, {self.lat})'
