@@ -106,7 +106,7 @@ def find_restaurants(order, rests_menu):
     for order_item in order.order_items.all():
         rests_for_product = [rest for rest in rests_menu if rest.product == order_item.product]
         rests_for_products.append(set(rests_for_product))
-    appropriate_rests = set(rests_for_products[0])
+    appropriate_rests = set.intersection(*rests_for_products)
     return appropriate_rests
 
 
