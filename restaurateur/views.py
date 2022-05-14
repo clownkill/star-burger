@@ -1,21 +1,15 @@
-import requests
-from geopy import distance
 from django import forms
 from django.shortcuts import redirect, render
 from django.views import View
 from django.urls import reverse_lazy
 from django.contrib.auth.decorators import user_passes_test
-from django.conf import settings
 from django.contrib.auth import authenticate, login
 from django.contrib.auth import views as auth_views
-from django.db.models import Prefetch
+from django.db.models import Sum
 
 from foodcartapp.models import Order
 from foodcartapp.models import Product
 from foodcartapp.models import Restaurant
-from foodcartapp.models import RestaurantMenuItem
-
-from placeapp.models import Place
 
 
 class Login(forms.Form):
@@ -101,116 +95,9 @@ def view_restaurants(request):
     })
 
 
-def find_restaurants(order, rests_menu):
-    rests_for_products = []
-    for order_item in order.order_items.all():
-        rests_for_product = [rest for rest in rests_menu if rest.product == order_item.product]
-        rests_for_products.append(set(rests_for_product))
-    appropriate_rests = set.intersection(*rests_for_products)
-    return appropriate_rests
-
-
-def find_coordinates(base_url, address, apikey):
-    response = requests.get(
-        base_url,
-        params={
-            'geocode': address,
-            'apikey': apikey,
-            'format': 'json',
-        }
-    )
-    response.raise_for_status()
-    found_places = response.json()['response']['GeoObjectCollection']['featureMember']
-
-    if not found_places:
-        address_with_coords = {
-            'address': address,
-            'lng': None,
-            'lat': None
-        }
-    else:
-        most_relevant = found_places[0]
-        lng, lat = most_relevant['GeoObject']['Point']['pos'].split(" ")
-        address_with_coords = {
-            'address': address,
-            'lng': lng,
-            'lat': lat
-        }
-
-    return address_with_coords
-
-
-def fetch_coordinates(apikey, addresses):
-    base_url = 'https://geocode-maps.yandex.ru/1.x'
-    addresses_with_coords = [
-        find_coordinates(base_url, address, apikey) for address in addresses
-    ]
-
-    return addresses_with_coords
-
-
-def get_order_details(order, restaurants):
-    rest_distance = []
-
-    for rest in restaurants:
-        rest_distance.append({
-            'name': rest.restaurant.name,
-            'distance': round(distance.distance(
-                (order.lng, order.lat), (rest.lng, rest.lat)
-            ).km, 2),
-        })
-    rest_distance = sorted(rest_distance, key=lambda k: k['distance'])
-
-    return {
-        'id': order.id,
-        'status': order.get_status_display(),
-        'order_price': order.order_price,
-        'firstname': order.firstname,
-        'lastname': order.lastname,
-        'address': order.address,
-        'phonenumber': order.phonenumber,
-        'comment': order.comment,
-        'payment': order.get_payment_method_display(),
-        'restaurant': rest_distance,
-    }
-
-
 @user_passes_test(is_manager, login_url='restaurateur:login')
 def view_orders(request):
-    apikey = settings.YANDEX_TOKEN
-
-    orders = (
-        Order.objects
-            .get_order_price()
-            .fetch_coordinates()
-            .prefetch_related(Prefetch('order_items__product'))
-            .filter(status='u')
-    )
-
-    addresses = [order.address for order in orders]
-
-    addresses.extend(Restaurant.objects.values_list('address', flat=True))
-    exist_addresses = Place.objects.values_list('address', flat=True)
-    addresses_to_add = set(addresses) - set(exist_addresses)
-
-    if addresses_to_add:
-        addresses_with_coords = fetch_coordinates(apikey, addresses_to_add)
-        Place.objects.bulk_create([
-            Place(address=place['address'], lng=place['lng'], lat=place['lat'])
-            for place in addresses_with_coords
-        ])
-    rests_menu = (
-        RestaurantMenuItem.objects
-            .select_related('restaurant')
-            .select_related('product')
-            .fetch_coordinates()
-            .filter(availability=True)
-    )
 
     return render(request, template_name='order_items.html', context={
-        'order_items': [
-            get_order_details(
-                order, find_restaurants(order, rests_menu)
-            ) for order in orders
-        ]
+        'order_items': Order.objects.all().annotate(order_price=Sum('items__price')).find_restaurants(),
     })
