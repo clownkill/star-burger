@@ -1,5 +1,3 @@
-import requests
-from django.conf import settings
 from django.db import transaction
 from django.http import JsonResponse
 from django.templatetags.static import static
@@ -10,7 +8,7 @@ from rest_framework.serializers import ModelSerializer
 from .models import Product
 from .models import Order
 from .models import OrderItem
-from placeapp.models import Place
+
 
 def banners_list_api(request):
     # FIXME move data to db?
@@ -64,24 +62,6 @@ def product_list_api(request):
     })
 
 
-def fetch_coordinates(apikey, address):
-    base_url = "https://geocode-maps.yandex.ru/1.x"
-    response = requests.get(base_url, params={
-        "geocode": address,
-        "apikey": apikey,
-        "format": "json",
-    })
-    response.raise_for_status()
-    found_places = response.json()['response']['GeoObjectCollection']['featureMember']
-
-    if not found_places:
-        return 0, 0
-
-    most_relevant = found_places[0]
-    lon, lat = most_relevant['GeoObject']['Point']['pos'].split(" ")
-    return lon, lat
-
-
 class OrderItemSerializer(ModelSerializer):
 
     class Meta:
@@ -98,13 +78,12 @@ class OrderSerializer(ModelSerializer):
 
     class Meta:
         model = Order
-        fields = ['id', 'firstname', 'lastname', 'phonenumber', 'address', 'products']
+        fields = ['firstname', 'lastname', 'phonenumber', 'address', 'products']
 
 
 @transaction.atomic
 @api_view(['POST'])
 def register_order(request):
-    apikey = settings.YANDEX_TOKEN
     data_for_order = request.data
     serializer = OrderSerializer(data=data_for_order)
     serializer.is_valid(raise_exception=True)
@@ -116,25 +95,16 @@ def register_order(request):
         address=serializer.validated_data['address']
     )
 
-    order_lng, order_lat = fetch_coordinates(
-        apikey,
-        serializer.validated_data['address']
+    OrderItem.objects.bulk_create(
+        [
+            OrderItem(
+                order=order,
+                product=product['product'],
+                quantity=product['quantity'],
+                price=product['quantity'] * product['product'].price
+            )
+            for product in serializer.validated_data['products']
+        ]
     )
-
-    Place.objects.update_or_create(
-        address=serializer.validated_data['address'],
-        defaults={
-            'lng': order_lng,
-            'lat': order_lat
-        }
-    )
-
-    for product in serializer.validated_data['products']:
-        OrderItem.objects.create(
-            order=order,
-            product=product['product'],
-            quantity=product['quantity'],
-            price=product['product'].price
-        )
 
     return Response(serializer.data)

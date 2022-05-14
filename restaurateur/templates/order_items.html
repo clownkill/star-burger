@@ -28,8 +28,8 @@
     {% for item in order_items %}
       <tr>
         <td>{{ item.id }}</td>
-        <td>{{ item.status }}</td>
-        <td>{{ item.payment }}</td>
+        <td>{{ item.get_order_status_display }}</td>
+        <td>{{ item.get_order_payment_method_display }}</td>
         <td>{{ item.order_price }}</td>
         <td>{{ item.firstname }} {{ item.lastname }}</td>
         <td>{{ item.phonenumber }}</td>
@@ -39,8 +39,8 @@
           <details>
             <summary>Развернуть</summary>
             <ul>
-              {% for place in item.restaurant %}
-                <li>{{ place.name }} - {{ place.distance }} км.</li>
+              {% for restaurant in item.restaurants %}
+                <li>{{ restaurant }} - {{ restaurant.distance }} км.</li>
               {% endfor %}
             </ul>
           </details>

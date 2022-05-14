@@ -1,36 +1,62 @@
+import requests
+
 from django.db import models
+from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist
 from django.core.validators import MinValueValidator, MaxValueValidator
-from django.db.models import DecimalField, F, Sum
-from django.db.models.expressions import OuterRef, Subquery
+from django.db.models import Prefetch
 from phonenumber_field.modelfields import PhoneNumberField
+from geopy import distance
 
 from placeapp.models import Place
 
 
+def fetch_coordinates(apikey, place):
+    base_url = "https://geocode-maps.yandex.ru/1.x"
+    params = {"geocode": place, "apikey": apikey, "format": "json"}
+    response = requests.get(base_url, params=params)
+    response.raise_for_status()
+    found_places = response.json()['response']['GeoObjectCollection']['featureMember']
+    most_relevant = found_places[0]
+    lng, lat = most_relevant['GeoObject']['Point']['pos'].split(" ")
+    return lng, lat
+
+
+def get_coordinates(apikey, address):
+    try:
+        place = Place.objects.get(address=address)
+    except ObjectDoesNotExist:
+        lng, lat = fetch_coordinates(apikey, address)
+        place = Place(address=address, lat=lat, lng=lng)
+        place.save()
+    return place.lng, place.lat
+
+
 class OrderQuerySet(models.QuerySet):
-    def get_order_price(self):
-        return self.annotate(
-            order_price=Sum(
-                F('items__price') * F('items__quantity'),
-                output_field=DecimalField(max_digits=8, decimal_places=2)
+
+    def find_restaurants(self):
+        orders = self.prefetch_related(
+            Prefetch('items', queryset=OrderItem.objects.select_related('product'))
+        )
+        res_orders = []
+        for order in orders:
+            order_items = set([item.product.name for item in order.items.all()])
+            order.coord = get_coordinates(settings.YANDEX_TOKEN, order.address)
+            restaurants = Restaurant.objects.all().prefetch_related(
+                Prefetch('menu_items', queryset=RestaurantMenuItem.objects.select_related('product'))
             )
-        )
-
-    def fetch_coordinates(self):
-        places = Place.objects.all()
-        return self.annotate(
-            lng=Subquery(places.filter(address=OuterRef('restaurant__address')).values('lng')),
-            lat=Subquery(places.filter(address=OuterRef('restaurant__address')).values('lat'))
-        )
-
-
-class RestaurantMenuItemsQuerySet(models.QuerySet):
-    def fetch_coordinates(self):
-        places = Place.objects.all()
-        return self.annotate(
-            lng=Subquery(places.filter(address=OuterRef('restaurant__address')).values('lng')),
-            lat=Subquery(places.filter(address=OuterRef('restaurant__address')).values('lat')),
-        )
+            order.restaurants = []
+            for restaurant in restaurants:
+                menu_items = set(
+                    [item.product.name for item in restaurant.menu_items.all() if item.availability]
+                )
+                if order_items.issubset(menu_items):
+                    restaurant.coord = get_coordinates(settings.YANDEX_TOKEN, restaurant.address)
+                    restaurant.distance = round(distance.distance(order.coord, restaurant.coord).km, 3)
+                    order.restaurants.append(restaurant)
+            order.restaurants.sort(key=lambda place: place.distance)
+            res_orders.append(order)
+        return res_orders
 
 
 class Restaurant(models.Model):
@@ -133,7 +159,7 @@ class RestaurantMenuItem(models.Model):
     product = models.ForeignKey(
         Product,
         on_delete=models.CASCADE,
-        related_name='item_products',
+        related_name='menu_items',
         verbose_name='продукт',
     )
     availability = models.BooleanField(
@@ -141,8 +167,6 @@ class RestaurantMenuItem(models.Model):
         default=True,
         db_index=True
     )
-
-    objects = RestaurantMenuItemsQuerySet.as_manager()
 
     class Meta:
         verbose_name = 'пункт меню ресторана'
@@ -240,7 +264,7 @@ class Order(models.Model):
 class OrderItem(models.Model):
     order = models.ForeignKey(
         Order,
-        verbose_name='Покупатель',
+        verbose_name='Заказ',
         related_name='items',
         on_delete=models.CASCADE
     )
