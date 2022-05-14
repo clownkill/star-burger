@@ -205,12 +205,10 @@ class Order(models.Model):
     firstname = models.CharField(
         'Имя',
         max_length=50,
-        null=False
     )
     lastname = models.CharField(
         'Фамилия',
         max_length=50,
-        null=False
     )
     phonenumber = PhoneNumberField(
         'Телефонный номер',
@@ -219,7 +217,6 @@ class Order(models.Model):
     address = models.CharField(
         'Адрес доставки',
         max_length=100,
-        null=False
     )
     comment = models.TextField(
         'Комментарий',
