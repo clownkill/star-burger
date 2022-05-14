@@ -103,7 +103,7 @@ def view_restaurants(request):
 
 def find_restaurants(order, rests_menu):
     rests_for_products = []
-    for order_item in order.customers.all():
+    for order_item in order.items.all():
         rests_for_product = [rest for rest in rests_menu if rest.product == order_item.product]
         rests_for_products.append(set(rests_for_product))
     appropriate_rests = set(rests_for_products[0])
@@ -183,7 +183,7 @@ def view_orders(request):
         Order.objects
             .get_order_price()
             .fetch_coordinates()
-            .prefetch_related(Prefetch('customers__product'))
+            .prefetch_related(Prefetch('items__product'))
             .filter(status='u')
     )
 
