@@ -29,7 +29,7 @@ class OrderModelAdmin(admin.ModelAdmin):
             if url_has_allowed_host_and_scheme(redirect_url, settings.ALLOWED_HOSTS):
                 return redirect(redirect_url)
 
-            return super(OrderModelAdmin. self).response_change(request, obj)
+        return super().response_change(request, obj)
 
 
 @admin.register(Order)
