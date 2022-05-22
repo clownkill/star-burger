@@ -4,7 +4,6 @@ import requests
 
 from django.db import models
 from django.conf import settings
-from django.core.exceptions import ObjectDoesNotExist
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db.models import Prefetch
 from phonenumber_field.modelfields import PhoneNumberField
