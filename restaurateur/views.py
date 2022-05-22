@@ -67,14 +67,14 @@ def is_manager(user):
 @user_passes_test(is_manager, login_url='restaurateur:login')
 def view_products(request):
     restaurants = list(Restaurant.objects.order_by('name'))
-    products = list(Product.objects.prefetch_related('item_products'))
+    products = list(Product.objects.prefetch_related('items'))
 
     default_availability = {restaurant.id: False for restaurant in restaurants}
     products_with_restaurants = []
     for product in products:
         availability = {
             **default_availability,
-            **{item.restaurant_id: item.availability for item in product.item_products.all()},
+            **{item.restaurant_id: item.availability for item in product.menu_items.all()},
         }
         orderer_availability = [availability[restaurant.id] for restaurant in restaurants]
 
