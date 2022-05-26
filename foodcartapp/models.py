@@ -29,7 +29,7 @@ def fetch_coordinates(apikey, place):
     return lng, lat
 
 
-def get_place(address):
+def create_place(address):
     try:
         lng, lat = fetch_coordinates(settings.YANDEX_TOKEN, address)
         place = Place.objects.create(address=address, lng=lng, lat=lat)
@@ -40,12 +40,22 @@ def get_place(address):
     return place
 
 
-def get_places(addresses):
+def get_or_create_places(addresses):
     places = Place.objects.in_bulk(addresses, field_name='address')
     missing_addresses = [address for address in addresses if address not in places.keys()]
     for address in missing_addresses:
-        places[address] = get_place(address)
+        places[address] = create_place(address)
     return places
+
+
+def get_distance(first_place, second_place):
+    dist = round(
+        distance.distance(
+            (first_place.lng, first_place.lat),
+            (second_place.lng, second_place.lat)
+        ).km, 2
+    )
+    return dist
 
 
 class OrderQuerySet(models.QuerySet):
@@ -65,7 +75,7 @@ class OrderQuerySet(models.QuerySet):
             )
         ))
 
-        places = get_places(addresses)
+        places = get_or_create_places(addresses)
         for order in orders:
             order_place = places.get(order.address)
             order.products = [
@@ -79,12 +89,7 @@ class OrderQuerySet(models.QuerySet):
                 if all(product in restaurant_products for product in order.products):
                     restaurant_place = places.get(restaurant.address)
                     if order_place and restaurant_place:
-                        dist = round(
-                            distance.distance(
-                                (order_place.lng, order_place.lat),
-                                (restaurant_place.lng, restaurant_place.lat)
-                            ).km, 2
-                        )
+                        dist = get_distance(order_place, restaurant_place)
                         order.restaurants[restaurant.address] = dist
             order.restaurants = {k: v for k, v in sorted(order.restaurants.items(), key=lambda item: item[1])}
 
