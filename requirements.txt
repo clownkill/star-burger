@@ -7,3 +7,4 @@ Pillow==8.2.0
 environs[django]==9.3.2
 requests==2.27.1
 geopy==2.2.0
+rollbar==0.16.2
