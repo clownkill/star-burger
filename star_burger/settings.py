@@ -89,7 +89,6 @@ DB_URL = env.str('DB_URL')
 
 DATABASES = {
     'default': dj_database_url.config(
-        # default='sqlite:////{0}'.format(os.path.join(BASE_DIR, 'db.sqlite3'))
         default=DB_URL
     )
 }
