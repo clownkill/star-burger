@@ -134,7 +134,7 @@ YANDEX_TOKEN = env('YANDEX_TOKEN')
 
 ROLLBAR = {
     'access_token': env.str('ROLLBAR_TOKEN'),
-    'environment': env.str('ROLLBAR_ENVIRONMENT', 'development'),
+    'environment': 'development' if DEBUG else env.str('ROLLBAR_ENVIRONMENT'),
     'root': BASE_DIR,
 }
 
