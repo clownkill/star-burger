@@ -135,10 +135,13 @@ STATICFILES_DIRS = [
 
 YANDEX_TOKEN = env('YANDEX_TOKEN')
 
+ROLLBAR_ENABLED = env.bool('ROLLBAR_ENABLED', False)
+
 ROLLBAR = {
     'access_token': env.str('ROLLBAR_TOKEN'),
-    'environment': 'development' if DEBUG else env.str('ROLLBAR_ENVIRONMENT'),
+    'environment': env.str('ROLLBAR_ENVIRONMENT', 'development'),
     'root': BASE_DIR,
 }
 
-rollbar.init(**ROLLBAR)
+if ROLLBAR_ENABLED:
+    rollbar.init(**ROLLBAR)
