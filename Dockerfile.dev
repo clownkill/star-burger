@@ -1,0 +1,33 @@
+FROM python:3.10-alpine
+
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+
+RUN apk add postgres-dev gcc python3-dev musl-dev zlib-dev jpeg-dev
+
+RUN mkdir -p /home/star-burger
+
+RUN addgroup -S star-burger && adduser -S star-burger -G star-burger
+
+ENV HOME=/home/star-burger
+ENV APP_HOME=/home/star-burger/web
+
+RUN mkdir $APP_HOME
+RUN mkdir $APP_HOME/static
+RUN mkdir $APP_HOME/media
+RUN mkdir $APP_HOME/assets
+RUN mkdir $APP_HOME/bundles
+
+WORKDIR $APP_HOME
+
+COPY ./requirements.txt .
+RUN pip install --upgrade pip
+RUN pip install -r requirements.txt
+
+COPY . $APP_HOME
+COPY ./static/ ./static
+COPY ./media/ ./media
+
+RUN chown -R star-burger:star-burger $APP_HOME
+
+USER star-burger

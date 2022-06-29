@@ -1,0 +1,15 @@
+FROM node:16-alpine3.14
+
+RUN apk add g++ make py3-pip && rm -rf /var/lib/apt/lists/*
+ENV HOME=/home/star-burger
+ENV APP_HOME=/home/star-burger/web
+WORKDIR $APP_HOME
+
+COPY ./assets/ ./assets
+COPY ./package-lock.json .
+COPY ./package.json .
+RUN npm ci --include=dev
+COPY ./.parcelrc .
+COPY ./bundles-src/ ./bundles-src
+
+RUN ./node_modules/.bin/parcel build ./bundles-src/index.js --dist-dir $APP_HOME/bundles --public-url="./"

@@ -1,0 +1,9 @@
+location /static/ {
+  alias /home/star-burger/web/static/;
+  add_header Access-Control-Allow-Origin *;
+}
+
+location /media/ {
+  alias /home/star-burger/web/media/;
+  add_header Access-Control-Allow-Origin *;
+}

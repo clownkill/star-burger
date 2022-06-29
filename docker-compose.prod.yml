@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    command: sh -c "python manage.py collectstatic --noinput &&
+                    python manage.py migrate &&
+                    gunicorn star_burger.wsgi:application --bind 0.0.0.0:8000"
+    volumes:
+      - static_volume:/home/star-burger/web/static
+      - media_volume:/home/star-burger/web/media
+    env_file:
+      - ./.env
+    expose:
+      - 8000
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: always
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.front
+    restart:
+      always
+
+  nginx-proxy-starburger:
+    container_name:
+      nginx-proxy-starburger
+    build:
+      context:
+        ./nginx
+      dockerfile:
+        Dockerfile.prod
+    restart:
+      always
+    ports:
+      - '443:443'
+      - '80:80'
+    volumes:
+      - static-volume:/home/star-burger/web/static
+      - media-volume:/home/star-burger/web/media
+      - certs:/etc/nginx/certs
+      - html:/usr/share/nginx/html
+      - vhost:/etx/nginx/vhost.d
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+    depends_on:
+      - web
+      - frontend
+
+  nginx-proxy-letsencrypt:
+    image: jrcs/letsencrypt-nginx-proxy-companion
+    env_file:
+      - ./.env.staging.proxy-companion
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - certs:/etc/nginx/certs
+      - html:/usr/share/nginx/html
+      - vhost:/etc/nginx/vhost.d
+      - acme:/etc/acme.sh
+    depends_on:
+      - nginx-proxy-starburger
+    restart: always
+
+  volumes:
+    static_volume:
+    media_volume:
+    certs:
+    html:
+    vhost:
+    acme:

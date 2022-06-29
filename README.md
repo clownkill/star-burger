@@ -146,6 +146,7 @@ Parcel будет следить за файлами в каталоге `bundle
 - `YANDEX_TOKEN` — токен для доступа к Yandex geocoder API, который можно получить в [кабинете разработчика](https://developer.tech.yandex.ru/).
 - `ROLLBAR_TOKEN` - токен для доступа к Rollbar[https://rollbar.com/].
 - `ROLLBAR_ENVIRONMENT` - название для окружения Rollbar.
+- `ROLLBAR_ENABLED` - включение/выключение Rollbar.
 - `DB_URL`- URL с настройками доступа к БД PostgreSQL (postgres://USER:PASSWORD@HOST:PORT/NAME).
 
 ## Как обновить код на сервере
@@ -154,6 +155,44 @@ Parcel будет следить за файлами в каталоге `bundle
 ```
 ./deploy.sh
 ```
+
+## Запуск dev-версии сайта с помощью docker-compose
+
+Создайте в каталоге `star_burger/` файл `.env` со следующим содержимым:
+- `DEBUG` — дебаг-режим. Поставьте `False`.
+- `SECRET_KEY` — секретный ключ проекта. Он отвечает за шифрование на сайте. Например, им зашифрованы все пароли на вашем сайте. Не стоит использовать значение по-умолчанию, **замените на своё**.
+- `ALLOWED_HOSTS` — [см. документацию Django](https://docs.djangoproject.com/en/3.1/ref/settings/#allowed-hosts)
+- `YANDEX_TOKEN` — токен для доступа к Yandex geocoder API, который можно получить в [кабинете разработчика](https://developer.tech.yandex.ru/).
+- `ROLLBAR_TOKEN` - токен для доступа к Rollbar[https://rollbar.com/].
+- `ROLLBAR_ENVIRONMENT` - название для окружения Rollbar.
+- `ROLLBAR_ENABLED` - включение/выключение Rollbar.
+- `DB_URL`- URL с настройками доступа к БД PostgreSQL (postgres://USER:PASSWORD@HOST:PORT/NAME).
+- `CSRF_COOKIE_DOMAIN` = `http://127.0.0.1:1337`, `http://mydomain.ru`, `https://mydomain.ru` [Документация](https://docs.djangoproject.com/en/4.0/ref/settings/#csrf-cookie-domain).
+- `CSRF_TRUSTED_ORIGINS` = `http://127.0.0.1:1337`, `http://mydomain.ru`, `https://mydomain.ru` [Документация](https://docs.djangoproject.com/en/4.0/ref/settings/#csrf-trusted-origins).
+
+В случае использования локального сервера postgres, в переменной `DB_URL` необходимо заменить localhost на host.docker.internal.
+
+Чтобы разрешить docker-compose подключаться к Postgres необходимо выполнить:
+1. `cd /etc/postgresql/<psql_version>/main`
+2. Отредактировать файл `postgresql.conf` - разрешить прослушивать все адреса (`listen_addresses='*'`)
+3. Отредактировать файл `pg_hba.conf`. Добавить в список допустимых для прослушивания адресов - адрес Docker-контейнера (`172.17.0.1/0` - ip контейнера по умолчанию).
+
+Для сборки и запуска docker-compose необходимо выполнить:
+```
+docker-compose -f docker-compose.dev.yml up --build -d
+```
+Сайт будет доступен по адресу: [http://localhost:1337](http://localhost:1337)
+
+## Запуск prod-версии сайта с помощью docker-compose
+
+Создайте в каталоге `star_burger/` файл `.env.staging.proxy-companion` со следующим содержимым:
+- `DEFAULT_EMAIL` - email, на который будут приходить уведомления от letsencrypt.org.
+- `ACME_CA_URI`= `https://acme-staging-v02.api.letsencrypt.org/directory`. Необходимо будет удалить данную опцию после первого получения сертификата.
+- `NGINX_PROXY_CONTAINER`- название вашего nginx-proxy контейнер из docker-compose.prod.yaml.
+
+Выполните инструкцию из `Запуск dev-версии сайта с помощью docker-compose`.
+
+Сайт будет доступен по адресу: [https://yourdomain.com](https://yourdomain.com)
 
 ## Цели проекта
 

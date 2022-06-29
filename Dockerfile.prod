@@ -1,0 +1,43 @@
+FROM python:3.10-alpine as builder
+
+WORKDIR /usr/src/star-burger
+
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+
+RUN apk add postgres-dev gcc python3-dev musl-dev zlib-dev jpeg-dev
+
+RUN pip install --upgrade pip
+RUN pip install flake8==3.9.2
+COPY . .
+RUN flake8 --ignore=E501,F401 .
+
+COPY ./requirements.txt .
+RUN pip wheel --no-cache-dir --no-deps --wheel-dir /usr/src/backend/wheels -r requirements.txt
+
+
+
+
+FROM python:3.10-alpine
+
+RUN mkdir -p /home/star-burger
+
+RUN addgroup -S star-burger && adduser star-burger -S star-burger -G star-burger
+
+ENV HOME=/home/star-burger
+ENV APP_HOME=/home/star-burger/web
+
+RUN mkdir $APP_HOME
+RUN mkdir $APP_HOME/static
+RUN mkdir $APP_HOME/media
+
+WORKDIR $APP_HOME
+
+RUN apk update && apk add libpq
+COPY --from=builder /usr/src/backend/wheels /wheels
+COPY --from=builder /usr/src/backend/requirements.txt .
+RUN pip install --no-cache /wheels/*
+
+COPY . $APP_HOME
+
+USER star-burger

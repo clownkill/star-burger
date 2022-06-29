@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    command: sh -c "python manage.py collectstatic --noinput &&
+                    python manage.py migrate &&
+                    gunicorn star_burger.wsgi:application --bind 0.0.0.0:8000"
+    volumes:
+      - static_volume:/home/star-burger/web/static
+      - media_volume:/home/star-burger/web/media
+    env_file:
+      - ./.env
+    expose:
+      - 8000
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart:
+      always
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.front
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile.dev
+    volumes:
+      - static_volume:/home/star-burger/web/static
+      - media_volume:/home/star-burger/web/media
+    ports:
+      - '1337:80'
+    depends_on:
+      - web
+      - frontend
+    restart:
+      always
+
+  volumes:
+    static_volume:
+    media_volume:
+
+
